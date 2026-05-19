@@ -1,4 +1,47 @@
-# 3LC Cotton Weed Detection – YOLOv8n Label-Centric Solution
+# Cotton Weed Detection — 10th Place Kaggle Solution
+
+YOLOv8n object detection for **carpetweed, morningglory, and Palmer amaranth** in cotton fields. This competition project combines label inspection and correction in **3LC**, varied YOLOv8n training runs, and **Weighted Boxes Fusion (WBF)** across seven checkpoints.
+
+| Result | Value |
+| --- | --- |
+| Final placement | **10th place** |
+| Public leaderboard score | **0.87430** |
+| Private leaderboard score | **0.82953** |
+| Competition metric | mAP at IoU 0.50 |
+| Detector | YOLOv8n, 640-pixel inference |
+
+These are detection scores, not classification accuracy. See the [published solution](https://www.kaggle.com/competitions/the-3lc-cotton-weed-detection-challenge/writeups/10th-place-solution-yolov8n-with-pseudo-ensemblin) for the reported placement and scores.
+
+[Competition](https://www.kaggle.com/competitions/the-3lc-cotton-weed-detection-challenge) · [Kaggle notebook](https://www.kaggle.com/code/nishantvalvi1504/the-3lc-cotton-weed-detection-challenge) · [Trained checkpoints](https://www.kaggle.com/models/nishantvalvi1504/3cl-cotton-weed-det-yolov8n-models) · [Corrected labels](https://www.kaggle.com/datasets/nishantvalvi1504/3cl-cotton-weed-det-final-labels) · [Detailed write-up](writeup.md)
+
+## Approach
+
+1. Train a short baseline and inspect predictions alongside labels in the 3LC Dashboard.
+2. Review missing boxes, misplaced boxes, and class confusion. Export corrected labels and convert them to YOLO format.
+3. Train YOLOv8n variants using AdamW/SGD, different augmentation settings, seeds, and training durations.
+4. Run seven checkpoints on each test image and fuse their predictions into one submission CSV.
+
+```mermaid
+flowchart LR
+    A[Images and labels] --> B[Baseline and 3LC review]
+    B --> C[Corrected labels]
+    C --> D[YOLOv8n training variants]
+    D --> E[Seven checkpoint predictions]
+    E --> F[Weighted Boxes Fusion]
+    F --> G[Submission CSV]
+```
+
+The final notebook uses per-model NMS at IoU **0.90**, then WBF at IoU **0.45**, with a **0.01** confidence/skip threshold. Checkpoint order is **A, B, C, D1, D2, D3, E**, with weights **[1, 1, 0.75, 0.5, 0.5, 1, 1]**.
+
+## Label inspection
+
+Examples from the original 3LC workflow:
+
+![Inspection of detections using IoU in the 3LC Dashboard](3LC%20dashboard%20screenshots/FP_detection_with_iou.png)
+
+![Label revisions in the 3LC Dashboard](3LC%20dashboard%20screenshots/label_version.png)
+
+## Detailed setup and workflow
 
 This repository contains my solution for the **3LC Cotton Weed Detection Challenge**. The workflow is:
 
@@ -16,11 +59,12 @@ The final solution uses only **YOLOv8n** models and improves performance mainly 
 ```text
 .
 ├── 3LC dashboard screenshots/      # Example screenshots for reference (optional)
-├── kaggle_cotton_weed_detection.zip # Zipped project (for sharing/submission)
+├── kaggle_cotton_weed_detection.zip # Archived 3LC run/table history
 ├── cotton_weed_starter_notebook.ipynb  # Phase 1: 3LC label-cleaning notebook
 ├── Kaggle_training_code.ipynb          # Phase 2: final training & inference
 ├── README.md                           # This file
-└── .gitignore / .git                   # Git metadata
+├── writeup.md                          # Detailed solution narrative
+└── .gitignore                          # Local files and generated outputs
 ```
 
 ---
@@ -52,19 +96,21 @@ Watch the full setup walkthrough: [3LC Quickstart Video](https://www.youtube.com
 
 ### Step 2: Set Up Python Environment (Recommended)
 
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) first. Use a separate environment for 3LC label review and the final Kaggle inference dependencies.
+
 #### Create a Virtual Environment
 
 **Windows:**
 
 ```bash
-python -m venv cotton-weed-env
-cotton-weed-env\Scripts\activate
+uv venv --python 3.11 cotton-weed-env
+.\cotton-weed-env\Scripts\Activate.ps1
 ```
 
 **Linux/MacOS:**
 
 ```bash
-python -m venv cotton-weed-env
+uv venv --python 3.11 cotton-weed-env
 source cotton-weed-env/bin/activate
 ```
 
@@ -76,23 +122,23 @@ source cotton-weed-env/bin/activate
 
 #### ⚠️ Important: PyTorch GPU Setup (For GPU Training)
 
-The following command will install PyTorch, but **by default it installs the CPU version**.
+The 3LC installation includes PyTorch dependencies. The installed CPU/CUDA build depends on your platform and package selection; check GPU availability before training.
 
 **If you have a GPU and want to use it for training:**
 
 1. First, install 3LC:
 
    ```bash
-   pip install 3lc-ultralytics
+   uv pip install 3lc-ultralytics
    ```
 2. Then, **reinstall PyTorch with CUDA support:**
 
    ```bash
-   # For CUDA 11.8
-   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+   # Historical CUDA 11.8 example; check compatibility before using
+   uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
 
-   # For CUDA 12.1
-   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+   # Historical CUDA 12.1 example; check compatibility before using
+   uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
    ```
 
    Visit [PyTorch Get Started](https://pytorch.org/get-started/locally/) to find the correct command for your CUDA version.
@@ -100,7 +146,7 @@ The following command will install PyTorch, but **by default it installs the CPU
 **If you're fine with CPU training (slower but works):**
 
 ```bash
-pip install 3lc-ultralytics
+uv pip install 3lc-ultralytics
 ```
 
 **What gets installed:**
@@ -111,7 +157,7 @@ pip install 3lc-ultralytics
 
 **System Requirements:**
 
-* Python 3.8+
+* The original setup listed Python 3.8+; the optional local examples here use Python 3.11. Check your selected 3LC/PyTorch releases for supported versions.
 * Windows 10+, Linux, or macOS
 * GPU with CUDA (optional but recommended for faster training)
 
@@ -209,11 +255,11 @@ The competition dataset is organized in YOLO format with `train`/`val`/`test` sp
 ```text
 cotton_weed_dataset/
 ├── train/images/        # 542 training images
-├── train/labels/        # 542 YOLO label files
+├── train/labels/        # YOLO label files; counts can change after label cleaning
 ├── val/images/          # 133 validation images
 ├── val/labels/          # 133 YOLO label files
 ├── test/images/         # 170 test images (no labels provided)
-└── dataset.yaml         # YOLO dataset configuration
+└── dataset.yaml         # Configure locally; the final notebook generates its own YAML
 ```
 
 ### Test Set Information
@@ -252,7 +298,7 @@ This dataset includes labeling imperfections. The whole point of this project is
    * Train a short YOLOv8n model (few epochs) with 3LC tracking enabled.
    * Sync the run to 3LC and open it in the Dashboard.
    * Use the Dashboard to find missing boxes, misaligned boxes, and class confusions (especially Carpetweed / Morningglory / Palmer Amaranth).
-6. After several passes of corrections, export the corrected labels from 3LC (CSV) and convert them back to YOLO TXT format (the notebook includes the conversion code).
+6. After several passes of corrections, export the corrected labels from 3LC (CSV) and convert them back to YOLO TXT format. The final notebook contains the conversion used for the exported labels. The starter's optional `update_labels` helper is preserved as historical code; check box coordinate semantics against your 3LC table schema before using it.
 7. Save the cleaned dataset (e.g. as `cotton_weed_dataset_cleaned/`) – this is what will be used for Phase 2.
 
 ---
@@ -264,29 +310,29 @@ This dataset includes labeling imperfections. The whole point of this project is
 3. Configure paths (input dataset, working directory) in the first cells.
 4. Run the notebook to:
 
-   * Train multiple YOLOv8n variants with different hyperparameters and augmentations.
-   * Evaluate them on the validation split.
+   * Use the saved, commented training recipes to train YOLOv8n variants when explicitly enabled.
+   * Evaluate on a held-out validation split during development. The final full-data training configuration overlaps train and validation; see the evaluation note below.
    * Run inference on the test set.
-   * Optionally ensemble predictions using Weighted Boxes Fusion (WBF) and create a submission ZIP.
-5. Submit the ZIP on Kaggle to obtain leaderboard scores.
+   * Optionally ensemble predictions using Weighted Boxes Fusion (WBF) and create a submission CSV.
+5. The competition submission artifact is a CSV, not a ZIP. The challenge has ended; the reported scores are from the original competition.
 
-> In my final solution, all models were trained on the **3LC-corrected labels only**, and the ensemble of several YOLOv8n runs outperformed any individual model.
+> In my final solution, all models were trained on the **3LC-corrected labels only**, and the reported final result uses the ensemble of several YOLOv8n runs. The detailed write-up describes its improvement over individual models; this repository does not include a controlled per-model comparison table.
 
 ---
 
 ## 5. Dependencies Summary
 
-* Python 3.8+
+* Python compatible with your 3LC and PyTorch versions (local examples use 3.11)
 * [`3lc-ultralytics`](https://pypi.org/project/3lc-ultralytics/)
 * `torch`, `torchvision` (GPU build recommended)
 * `ultralytics`
 * `numpy`, `pandas`, `tqdm`, `matplotlib`, `pillow`, `pycocotools`
 * (Optional, for ensembling) `ensemble-boxes`
 
-All of these are installed automatically when you follow the commands in the [Environment Setup](#1-environment-setup-3lc--ultralytics) section, except `ensemble-boxes`, which you can add via:
+The 3LC installation provides its dependencies. Verify the tools needed for your chosen workflow after following the commands in the [Environment Setup](#1-environment-setup-3lc--ultralytics) section, except `ensemble-boxes`, which you can add via:
 
 ```bash
-pip install ensemble-boxes
+uv pip install ensemble-boxes
 ```
 
 ---
@@ -307,3 +353,43 @@ If you want to see the full Kaggle pipeline and artifacts, you can refer to:
 * **Solution Notebook:** [https://www.kaggle.com/code/nishantvalvi1504/the-3lc-cotton-weed-detection-challenge](https://www.kaggle.com/code/nishantvalvi1504/the-3lc-cotton-weed-detection-challenge)
 * **Trained YOLOv8n Models:** [https://www.kaggle.com/models/nishantvalvi1504/3cl-cotton-weed-det-yolov8n-models](https://www.kaggle.com/models/nishantvalvi1504/3cl-cotton-weed-det-yolov8n-models)
 * **Corrected Labels Dataset:** [https://www.kaggle.com/datasets/nishantvalvi1504/3cl-cotton-weed-det-final-labels](https://www.kaggle.com/datasets/nishantvalvi1504/3cl-cotton-weed-det-final-labels)
+
+## Run on Kaggle
+
+The competition workflow stays in notebooks. To run inference without retraining:
+
+1. Copy the [published notebook](https://www.kaggle.com/code/nishantvalvi1504/the-3lc-cotton-weed-detection-challenge), or upload `Kaggle_training_code.ipynb` from this repository.
+2. Attach the competition dataset, corrected-label dataset, and PyTorch/default/version 1 of the trained checkpoints linked above. Enable Internet for dependency setup; a GPU is recommended for seven-model inference.
+3. Follow the notebook's original Kaggle setup, then check `SRC_ROOT`, `WORK_ROOT`, `CSV_BY_SPLIT`, and `MODEL_PATHS`. Input paths can change with dataset/model versions. The notebooks are preserved as competition artifacts, including their original setup commands.
+4. Run data preparation and inference. Tuning and training recipes are commented out and do not launch training automatically.
+5. Download `/kaggle/working/submission.csv`. Its columns are `image_id,prediction_string`. Each detection is `class confidence x_center y_center width height` with normalized coordinates. Images without detections receive `no box`.
+
+The notebooks have not been rerun as part of this documentation update. Their saved outputs describe the original runs.
+
+## Optional local notebook setup
+
+Use Python 3.11 and [uv](https://docs.astral.sh/uv/). From the repository directory:
+
+```powershell
+uv venv --python 3.11
+uv pip install --python .venv/Scripts/python.exe "ultralytics==8.2.103" "ensemble-boxes==1.0.9" "numpy<2" pandas tqdm jupyterlab
+uv run --no-project jupyter lab
+```
+
+On Linux/macOS, replace `.venv/Scripts/python.exe` with `.venv/bin/python`. `uv pip` is uv's package installer; a separate pip installation is not required. This is an optional setup starting point, not a verified recreation of the historical Kaggle environment. The original notebook setup cells may be skipped when dependencies have already been installed with uv.
+
+Download the checkpoints from the model page into `weights/`, obtain the competition data through Kaggle, and edit the notebook's Kaggle-specific paths to your local directories. Credentials, dataset images, and model weights are not bundled.
+
+For label review, install `3lc-ultralytics` and Jupyter in a **separate uv environment**, following the [3LC documentation](https://docs.3lc.ai/). Open `cotton_weed_starter_notebook.ipynb` and configure its dataset YAML and checkpoint paths. Its optional custom-checkpoint cell has an example local path that must be replaced or skipped. The starter records the exploratory workflow; the final Kaggle notebook contains the submitted ensemble approach.
+
+## Evaluation notes
+
+Final training includes **both train and validation images**. Its validation metrics therefore are not independent evaluation. For tuning or held-out evaluation, train on `train/images` only and reserve `val/images`. The private leaderboard score is the reported hidden-test result.
+
+Training recipes and saved outputs are included, but not every training run is captured as a fully automated reproduction. There is no controlled ablation table isolating the effects of label corrections and fusion. Field deployment performance has not been measured.
+
+## Data use and acknowledgements
+
+Follow the [competition rules](https://www.kaggle.com/competitions/the-3lc-cotton-weed-detection-challenge/rules) when using the data. Access and redistribution restrictions apply; download images from the authorized source rather than republishing the dataset. Public demos should use uploads or examples with suitable permission.
+
+Thanks to the organizers, the CottonWeedDet3 authors, 3LC, Ultralytics, and the [Weighted Boxes Fusion authors](https://arxiv.org/abs/1910.13302).

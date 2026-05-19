@@ -1,4 +1,22 @@
 # Byte-compiled / optimized / DLL files
+# Local IDE files, datasets, checkpoints, and generated predictions
+.idea/
+.vscode/
+data/
+datasets/
+CottonWeedDetection/
+cotton_weed_dataset*/
+cotton_weed_competition_dataset/
+weights/
+runs/
+outputs/
+*.pt
+*.onnx
+submission*.csv
+TRAIN_NEW.csv
+VAL_NEW.csv
+.codebase-memory/
+
 __pycache__/
 *.py[codz]
 *$py.class
